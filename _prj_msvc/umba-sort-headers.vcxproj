@@ -35,6 +35,8 @@
   </ItemDefinitionGroup>
 
   <ItemGroup>
+    <ClCompile Include="..\_libs\umba\critical_section.cpp" />
+    <ClCompile Include="..\_libs\umba\time_service.cpp" />
     <ClCompile Include="..\src\umba-sort-headers.cpp" />
     <ClCompile Include="..\_libs\sfmt\umba_lout.cpp" />
   </ItemGroup>
