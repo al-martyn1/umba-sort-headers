@@ -26,7 +26,7 @@ set PREFIX=git@%BASE%:%ACC%
 :DO_CLONE
 
 git clone %PREFIX%/marty_cpp.git
-git clone %PREFIX%/umba_mm_mod_umba.git   umba
-git clone %PREFIX%/umba_mm_mod_sfmt.git   sfmt
+git clone %PREFIX%/umba_mm_mod_umba.git   %~dp0\umba
+git clone %PREFIX%/umba_mm_mod_sfmt.git   %~dp0\sfmt
 
 

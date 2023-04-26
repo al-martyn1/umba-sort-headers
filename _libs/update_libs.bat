@@ -1,1 +1,1 @@
-@call _git-job-impl.bat pull
+@call %~dp0\_git-job-impl.bat pull

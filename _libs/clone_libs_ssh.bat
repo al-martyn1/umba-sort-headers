@@ -1,1 +1,1 @@
-@call clone_libs.bat SSH
+@call %~dp0\_clone_libs.bat SSH

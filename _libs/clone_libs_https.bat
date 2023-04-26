@@ -1,1 +1,1 @@
-@call clone_libs.bat HTTPS
+@call %~dp0\_clone_libs.bat HTTPS
