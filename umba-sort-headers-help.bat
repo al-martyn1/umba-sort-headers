@@ -1,0 +1,1 @@
+.out\msvc2019\x64\Debug\umba-sort-headers.exe --help > umba-sort-headers.txt
