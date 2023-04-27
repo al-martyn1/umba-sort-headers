@@ -123,10 +123,10 @@ int main(int argc, char* argv[])
         if (argsParser.mustExit)
             return 0;
        
-        if (!argsParser.quet)
-        {
-            printNameVersion();
-        }
+        // if (!argsParser.quet)
+        // {
+        //     printNameVersion();
+        // }
        
         if (!argsParser.parseStdBuiltins())
             return 1;

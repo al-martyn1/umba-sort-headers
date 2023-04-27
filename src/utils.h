@@ -28,7 +28,8 @@ std::string readStreamHelper(std::istream &fileIn)
 inline
 bool writeStreamHelper(std::ostream &fileOut, const std::string &data)
 {
-    if (!fileOut.write(data.data(), data.size()))
+    auto dataSize = data.size();
+    if (!fileOut.write(data.data(), dataSize))
     {
         return false;
     }

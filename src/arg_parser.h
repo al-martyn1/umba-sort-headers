@@ -316,6 +316,7 @@ int operator()( const std::string                               &a           //!
                 //printNameVersion();
                 if (!argsParser.quet)
                 {
+                    printNameVersion();
                     printBuildDateTime();
                     printCommitHash();
                     std::cout<<"\n";
