@@ -16,7 +16,7 @@
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <PropertyGroup>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)\..\src\encoding</IncludePath>
+    <IncludePath>$(UMBA_INC_DIRS);$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)\..\_libs\encoding</IncludePath>
   </PropertyGroup>
   <ImportGroup Label="ExtensionSettings" />
   <ImportGroup Label="Shared" />

@@ -16,7 +16,7 @@
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <PropertyGroup>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)\..\src\encoding</IncludePath>
+    <IncludePath>$(UMBA_INC_DIRS);$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)\..\_libs\encoding</IncludePath>
   </PropertyGroup>
   <ImportGroup Label="ExtensionSettings" />
   <ImportGroup Label="Shared" />
@@ -39,6 +39,11 @@
     <ClCompile Include="..\_libs\umba\time_service.cpp" />
     <ClCompile Include="..\src\umba-sort-headers.cpp" />
     <ClCompile Include="..\_libs\sfmt\umba_lout.cpp" />
+    <ClCompile Include="..\_libs\encoding\encoding.cpp" />
+    <ClCompile Include="..\_libs\encoding\compact_enc_det\compact_enc_det.cc" />
+    <ClCompile Include="..\_libs\encoding\compact_enc_det\compact_enc_det_hint_code.cc" />
+    <ClCompile Include="..\_libs\encoding\util\encodings\encodings.cc" />
+    <ClCompile Include="..\_libs\encoding\util\languages\languages.cc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

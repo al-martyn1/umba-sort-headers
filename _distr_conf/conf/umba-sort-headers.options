@@ -1,0 +1,6 @@
+--group=1
+--block=1
+--user
+--overwrite=Y
+--linefeed=DETECT
+#LINEFEED is one of: CR/LF/CRLF/LFCR/DETECT.

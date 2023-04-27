@@ -52,6 +52,7 @@ int operator()( const std::string                               &a           //!
     if (opt.isOption())
     {
         std::string errMsg;
+        std::string strVal;
         int intVal;
         //unsigned uintVal;
         std::size_t szVal;
@@ -226,7 +227,7 @@ int operator()( const std::string                               &a           //!
             }
 
         else if ( opt.isOption("user") || opt.isOption('U')
-               || opt.setDescription("Iser headers first."))
+               || opt.setDescription("User headers first."))
             {
                 if (argsParser.hasHelpOption) return 0;
                 sortIncludeOptions.sysIncludesFirst = false;
@@ -236,7 +237,7 @@ int operator()( const std::string                               &a           //!
         else if ( opt.setParam("?MODE",true)
                || opt.isOption("overwrite") || opt.isOption('Y') 
                // || opt.setParam("VAL",true)
-               || opt.setDescription("Allow overwrite existing file"))
+               || opt.setDescription("Allow overwrite existing file."))
         {
             if (argsParser.hasHelpOption) return 0;
 
@@ -247,6 +248,31 @@ int operator()( const std::string                               &a           //!
             }
             
             bOverwrite = boolVal;
+            return 0;
+        }
+
+        else if ( opt.setParam("LINEFEED",umba::command_line::OptionType::optString)
+               || opt.isOption("linefeed") || opt.isOption("LF") || opt.isOption('L')
+               // || opt.setParam("VAL",true)
+               || opt.setDescription("Output linefeed. LINEFEED is one of: CR/LF/CRLF/LFCR/DETECT."))
+        {
+            if (argsParser.hasHelpOption) return 0;
+
+            if (!opt.getParamValue(strVal,errMsg))
+            {
+                LOG_ERR_OPT<<errMsg<<"\n";
+                return -1;
+            }
+            
+            ELinefeedType tmp = marty_cpp::enum_deserialize( strVal, ELinefeedType::invalid );
+            if (tmp==ELinefeedType::invalid)
+            {
+                LOG_ERR_OPT<<"Invalid linefeed option value: "<<strVal<<"\n";
+                return -1;
+            }
+
+            outputLinefeed = tmp;
+
             return 0;
         }
 
@@ -300,15 +326,16 @@ int operator()( const std::string                               &a           //!
                 {
                     auto helpText = opt.getHelpOptionsString();
                     std::cout << "Usage: " << programLocationInfo.exeName
-                              << " [OPTIONS] input_file [output_file]\n"
-                              << "  Use {STDIN}/{STDOUT} to use STDIN (for input) or STDOUT (for output)\n"
-                              // << "  Use '-' (minus sign) or {STDIN}/{STDOUT} to use STDIN (for input) or STDOUT (for output)\n"
-                              // << "    If '-' (minus sign) used for input/output file names, separate them with '--' from OPTIONS\n"
-                              << "  Use '{CLPB}'/'{CLPBRD}'/'{CLIPBRD}'/'{CLIPBOARD}' to use clipboard for input or output\n"
-                              << "  If 'output_file' not taken, 'input_file' will be used (or STDOUT if input is from STDIN)\n"
+                              << " [OPTIONS] [input_file [output_file]]\n"
+                              << "  If input_file not taken, STDIN used\n"
+                              << "  If output_file not taken, input file name used, or STDOUT, if input is from STDIN\n"
+                              << "  Use 'STDIN' as input file name to read from STDIN\n"
+                              << "  Use 'STDOUT' as output file name to write to STDOUT\n"
+                              << "  Use 'CLPB' to use clipboard as input/output file\n"
                               << "\nOptions:\n\n"
                               << helpText;
                               //<< " [OPTIONS] input_file [output_file]\n\nOptions:\n\n"<<helpText;
+
                 }
                 
                 if (pCol) // argsNeedHelp
