@@ -31,7 +31,7 @@
 #include "marty_cpp/src_normalization.h"
 
 #include "utf.h"
-#include "utils.h"
+#include "app_utils.h"
 
 
 #if defined(WIN32) || defined(_WIN32)
@@ -150,173 +150,77 @@ int main(int argc, char* argv[])
     // }
 
 
-    enum class IoFileType
-    {
-        nameEmpty,
-        regularFile,
-        stdioFile, // minus/'-'
-        stdinFile,
-        stdoutFile,
-        clipboard
-    };
-
-    auto detectFilenameType = [](const std::string &n) -> IoFileType
-    {
-        if (n.empty())
-            return IoFileType::nameEmpty;
-
-        std::string N = marty_cpp::toUpper(n);
-
-        if (N=="-")
-            return IoFileType::stdioFile;
-
-        if (N=="STDIN")
-            return IoFileType::stdinFile;
-
-        if (N=="STDOUT")
-            return IoFileType::stdoutFile;
-
-#if defined(HAS_CLIPBOARD_SUPPORT)
-        if (N=="CLPB" /*  || N=="{CLPBRD}" || N=="{CLIPBRD}" || N=="{CLIPBOARD}" */ )
-            return IoFileType::clipboard;
-#endif
-
-        return IoFileType::regularFile;
-    };
-
-
     if (inputFilename.empty())
     {
         inputFilename = "STDIN";
     }
 
 
-    IoFileType inputFileType = detectFilenameType(inputFilename);
+    std::string checkMsg;
 
-    if (inputFileType==IoFileType::nameEmpty)
+    app_utils::IoFileType inputFileType = app_utils::detectFilenameType(inputFilename, true /* input file */);
+    if (!app_utils::checkIoFileType(inputFileType, checkMsg, true /* input file */))
     {
-        LOG_ERR_OPT << "no input file name taken\n";
+        LOG_ERR_OPT << checkMsg << "\n";
         return 1;
     }
 
-    if (inputFileType==IoFileType::stdoutFile)
+    outputFilename = app_utils::adjustOutputFilename(outputFilename, inputFilename, inputFileType);
+    app_utils::IoFileType outputFileType = app_utils::detectFilenameType(outputFilename, false /* not input file */);
+    if (!app_utils::checkIoFileType(outputFileType, checkMsg, false /* not input file */))
     {
-        LOG_ERR_OPT << "can't use STDOUT for input\n";
+        LOG_ERR_OPT << checkMsg << "\n";
         return 1;
     }
-
-    if (inputFileType==IoFileType::stdioFile)
-    {
-        inputFileType = IoFileType::stdinFile; // заменяем минус на STDIN для входного файла
-    }
-
-    //------------------------------
-    
-    if (outputFilename.empty())
-    {
-        if (inputFileType==IoFileType::stdinFile)
-        {
-            outputFilename = "STDOUT";
-        }
-        else
-        {
-            outputFilename = inputFilename;
-        }
-    }
-
-    //------------------------------
-    
-    IoFileType outputFileType = detectFilenameType(outputFilename);
-
-    if (outputFileType==IoFileType::nameEmpty)
-    {
-        LOG_ERR_OPT << "no output file name taken\n";
-        return 1;
-    }
-
-    if (outputFileType==IoFileType::stdinFile)
-    {
-        LOG_ERR_OPT << "can't use STDIN for output\n";
-        return 1;
-    }
-
-    if (outputFileType==IoFileType::stdioFile)
-    {
-        outputFileType = IoFileType::stdoutFile; // заменяем минус на STDOUT для выходного файла
-    }
-
-#if defined(HAS_CLIPBOARD_SUPPORT)
-    if (outputFileType==IoFileType::clipboard)
-    {
-        outputLinefeed = ELinefeedType::crlf;
-    }
-#endif
 
 
     bool utfSource = false;
+    bool checkBom  = true;
+    bool fromFile  = true;
     std::string srcData;
-    bool checkBom = true;
     std::string bomData;
 
 #if defined(HAS_CLIPBOARD_SUPPORT)
-    if (inputFileType==IoFileType::clipboard)
+    if (inputFileType==app_utils::IoFileType::clipboard)
     {
-        std::wstring wstr;
-        std::string  astr;
-        #if defined(WIN32) || defined(_WIN32)
-        if (umba::win32::clipboardTextGet(wstr, umba::win32::clipboardGetConsoleHwnd()) && !wstr.empty())
-        {
-            srcData = toUtf8(wstr);
-            utfSource = true;
-        }
-        else if (umba::win32::clipboardTextGet(astr, umba::win32::clipboardGetConsoleHwnd()) && !astr.empty())
-        {
-            srcData = astr;
-            utfSource = false;
-        }
-        else
-        {
-            LOG_ERR_OPT << "failed to get clipboard text or clipboard is empty\n";
-            return 0;
-        }
-
         checkBom = false;
-
+        fromFile = false;
+        if (!app_utils::getClipboardTextHelper(srcData, &utfSource))
+        {
+            LOG_ERR_OPT << "failed to get clipboard text\n";
+            return 1;
+        }
+        #if defined(WIN32) || defined(_WIN32)
+        outputLinefeed = ELinefeedType::crlf;
         #endif
     }
     else
 #endif
-    if (inputFileType==IoFileType::stdinFile)
+    if (!app_utils::readFileHelper(inputFileType, inputFilename, srcData))
     {
-        srcData = readStreamHelper(std::cin);
+        LOG_ERR_OPT << "failed to read input file '" << inputFilename << "'\n";
+        return 1;
     }
-    else if (inputFileType==IoFileType::regularFile)
-    {
-        srcData = readFileHelper(inputFilename);
-        if (srcData.empty())
-        {
-            LOG_ERR_OPT << "input file is missing or empty\n";
-            return 1;
-        }
-    }
-    else
-    {
-        LOG_ERR_OPT << "unknown input file type\n";
-    }
+
+
+    // Есть ли данные на входе, нет их - это не наша проблема - процессим пустой текст в нормальном режиме
 
     if (checkBom)
     {
-        bomData = stripBom(srcData);
+        bomData = app_utils::stripBom(srcData);
     }
 
     if (!bomData.empty() && bomData.size()!=3)
     {
         // https://ru.wikipedia.org/wiki/%D0%9C%D0%B0%D1%80%D0%BA%D0%B5%D1%80_%D0%BF%D0%BE%D1%81%D0%BB%D0%B5%D0%B4%D0%BE%D0%B2%D0%B0%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D0%BE%D1%81%D1%82%D0%B8_%D0%B1%D0%B0%D0%B9%D1%82%D0%BE%D0%B2
-        LOG_ERR_OPT << "unsupported file encoding, found BOM but not UTF-8\n";
+        LOG_ERR_OPT << "unsupported input file encoding, found BOM but not UTF-8\n";
         return 1;
     }
-    
 
+
+    //------------------------------
+
+    // Do job itself
 
     ELinefeedType detectedSrcLinefeed = ELinefeedType::crlf;
 
@@ -326,15 +230,6 @@ int main(int argc, char* argv[])
     {
         outputLinefeed = detectedSrcLinefeed;
     }
-
-#if defined(HAS_CLIPBOARD_SUPPORT)
-    if (outputFileType==IoFileType::clipboard)
-    {
-        #if defined(WIN32) || defined(_WIN32)
-        outputLinefeed = ELinefeedType::crlf; // Для виндового клипборда - перевод строки всегда CRLF
-        #endif
-    }
-#endif
 
 
     std::vector<std::string> textLines = marty_cpp::splitToLinesSimple( lfNormalizedText
@@ -346,47 +241,34 @@ int main(int argc, char* argv[])
 
     std::string resultText = marty_cpp::mergeLines(sortedLines, outputLinefeed, false /* addTrailingNewLine */);
 
+    //------------------------------
+
+
 #if defined(HAS_CLIPBOARD_SUPPORT)
-    if (outputFileType==IoFileType::clipboard)
+    if (outputFileType==app_utils::IoFileType::clipboard)
     {
-        #if defined(WIN32) || defined(_WIN32)
-        if (utfSource)
+        if (fromFile)
         {
-            std::wstring wText = fromUtf8(resultText);
-            if (!umba::win32::clipboardTextSet(wText, umba::win32::clipboardGetConsoleHwnd()))
-            {
-                LOG_ERR_OPT << "failed to set clipboard text\n";
-                return 1;
-            }
+            // Прочитали из файла, хз какая кодировка
+            // Детектим кодировку и конвертим в UTF-8
+            resultText = autoToUtf8(bomData+resultText);
+            utfSource  = true;
         }
-        else
+
+        if (!app_utils::setClipboardTextHelper(resultText, utfSource))
         {
-            if (!umba::win32::clipboardTextSet(resultText, umba::win32::clipboardGetConsoleHwnd()))
-            {
-                LOG_ERR_OPT << "failed to set clipboard text\n";
-                return 1;
-            }
+            LOG_ERR_OPT << "failed to set clipboard text\n";
+            return 1;
         }
-        #endif
     }
     else
 #endif
-    if (outputFileType==IoFileType::stdoutFile)
+    if (!app_utils::writeFileHelper(outputFileType, outputFilename, resultText, bOverwrite))
     {
-        writeStreamHelper(std::cout, bomData+resultText);
-    }
-    else if (outputFileType==IoFileType::regularFile)
-    {
-        if (!writeFileHelper(outputFilename, bomData+resultText, bOverwrite))
-        {
-            LOG_ERR_OPT << "filed to write output file type\n";
-        }
-    }
-    else
-    {
-        LOG_ERR_OPT << "unknown output file type\n";
+        LOG_ERR_OPT << "failed to write output file '" << outputFilename << "'\n";
         return 1;
     }
+
 
     return 0;
 }

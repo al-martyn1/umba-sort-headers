@@ -23,3 +23,19 @@ std::wstring fromUtf8(const std::string &str)
     auto pApi = getEncodingsApi();
     return pApi->decode(str, EncodingsApi::cpid_UTF8);
 }
+
+inline
+std::string autoToUtf8(std::string text)
+{
+    EncodingsApi* pApi = getEncodingsApi();
+
+    size_t bomSize = 0;
+    std::string detectedCpName = pApi->detect( text, bomSize );
+
+    if (bomSize)
+        text.erase(0,bomSize);
+
+    auto cpId = pApi->getCodePageByName(detectedCpName);
+    
+    return pApi->convert( text, cpId, EncodingsApi::cpid_UTF8 );
+}

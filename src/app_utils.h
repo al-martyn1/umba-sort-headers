@@ -9,12 +9,26 @@
 
 #include "encoding/encoding.h"
 
+#if defined(WIN32) || defined(_WIN32)
+
+    #define HAS_CLIPBOARD_SUPPORT 1
+    #include "umba/clipboard_win32.h"
+
+#endif
+
+#include "utf.h"
+
+
+namespace app_utils {
+
 
 // template<typename StringType>
 inline
-std::string readStreamHelper(std::istream &fileIn)
+bool readStreamHelper(std::istream &fileIn, std::string &data)
 {
-    std::string data;
+    //std::string data;
+    data.clear();
+
     char buffer[4096];
     while (fileIn.read(buffer, sizeof(buffer)))
     {
@@ -22,7 +36,7 @@ std::string readStreamHelper(std::istream &fileIn)
     }
     data.append(buffer, fileIn.gcount());
     
-    return data;
+    return true;
 }
 
 inline
@@ -39,7 +53,7 @@ bool writeStreamHelper(std::ostream &fileOut, const std::string &data)
 
 
 inline
-std::string readFileHelper( const std::string &fileName )
+bool readFileHelper( const std::string &fileName, std::string &data )
 {
 
     #if defined(WIN32) || defined(_WIN32)
@@ -54,10 +68,11 @@ std::string readFileHelper( const std::string &fileName )
                                   );
         if (hFile==INVALID_HANDLE_VALUE)
         {
-            return std::string();
+            return false; // std::string();
         }
 
-        std::string data;
+        // std::string data;
+        data.clear();
 
         std::vector<std::string::value_type> buf = std::vector<std::string::value_type>(16384,0); // 16Kb filled with zero
 
@@ -70,7 +85,7 @@ std::string readFileHelper( const std::string &fileName )
 
         CloseHandle(hFile);
        
-        return data;
+        return true;
 
     #else
 
@@ -78,10 +93,10 @@ std::string readFileHelper( const std::string &fileName )
         fileIn.open(fileName, std::ios_base::in | std::ios_base::binary);
         if (!fileIn)
         {
-            return std::string();
+            return false; // std::string();
         }
 
-        return readStreamHelper(fileIn);
+        return readStreamHelper(fileIn, data);
 
         // std::string data;
         // char buffer[4096];
@@ -206,9 +221,13 @@ std::string stripBom( std::string &text)
 {
     EncodingsApi* pApi = getEncodingsApi();
    
-    size_t bomSize = 0;
-    std::string detectRes = pApi->detect( text, bomSize );
+    std::size_t bomSize = 0;
+    //std::string detectRes = pApi->detect( text, bomSize );
+    UINT cpId = pApi->checkTheBom( text.data(), text.size(), &bomSize );
    
+    if (!cpId)
+        std::string();
+
     if (bomSize)
     {
         std::string bom = std::string(text, 0, bomSize);
@@ -219,6 +238,169 @@ std::string stripBom( std::string &text)
     return std::string();
 }
 
+//----------------------------------------------------------------------------
 
+
+
+//----------------------------------------------------------------------------
+
+enum class IoFileType
+{
+    nameEmpty,
+    regularFile,
+    //stdioFile, // minus/'-'
+    stdinFile,
+    stdoutFile,
+    clipboard
+};
+
+
+inline
+IoFileType detectFilenameType(const std::string &n, bool bInput=false)
+{
+    if (n.empty())
+        return IoFileType::nameEmpty;
+
+    std::string N = marty_cpp::toUpper(n);
+
+    if (N=="-")
+    {
+        return bInput ? IoFileType::stdinFile : IoFileType::stdoutFile;
+        //return IoFileType::stdioFile;
+    }
+
+    if (N=="STDIN")
+        return IoFileType::stdinFile;
+
+    if (N=="STDOUT")
+        return IoFileType::stdoutFile;
+
+#if defined(HAS_CLIPBOARD_SUPPORT)
+    if (N=="CLPB"|| N=="CLIPBRD" /* || N=="{CLIPBRD}" || N=="{CLIPBOARD}" */ )
+        return IoFileType::clipboard;
+#endif
+
+    return IoFileType::regularFile;
+};
+
+
+inline
+bool checkIoFileType(IoFileType ioFt, std::string &msg, bool bInput=false)
+{
+    if (ioFt==IoFileType::nameEmpty)
+    {
+        msg = "no input file name taken";
+        return false;
+    }
+
+    if (bInput)
+    {
+        if (ioFt==IoFileType::stdoutFile)
+        {
+            msg = "can't use STDOUT for input";
+            return false;
+        }
+    }
+    else // output file
+    {
+        if (ioFt==IoFileType::stdinFile)
+        {
+            msg = "can't use STDIN for output";
+            return false;
+        }
+    }
+
+    return true;
+}
+
+inline
+std::string adjustOutputFilename(const std::string &outputFilename, const std::string &inputFilename, IoFileType inputFileType)
+{
+    if (!outputFilename.empty())
+        return outputFilename;
+
+    if (inputFileType==IoFileType::stdinFile)
+        return "STDOUT";
+
+    return inputFilename;
+}
+
+
+#if defined(HAS_CLIPBOARD_SUPPORT)
+inline
+bool getClipboardTextHelper(std::string &text, bool *pUtf=0)
+{
+    #if defined(WIN32) || defined(_WIN32)
+    std::wstring wstr;
+    if (umba::win32::clipboardTextGet(wstr, umba::win32::clipboardGetConsoleHwnd()))
+    {
+        text = toUtf8(wstr);
+        if (pUtf)
+           *pUtf = true;
+    }
+    else if (umba::win32::clipboardTextGet(text, umba::win32::clipboardGetConsoleHwnd()))
+    {
+        if (pUtf)
+           *pUtf = false;
+    }
+    else
+    {
+        return false;
+    }
+
+    return true;
+
+    #else
+
+    return false;
+
+    #endif
+}
+
+inline
+bool setClipboardTextHelper(const std::string &text, bool utf)
+{
+    #if defined(WIN32) || defined(_WIN32)
+    if (utf)
+    {
+        return umba::win32::clipboardTextSet(fromUtf8(text), umba::win32::clipboardGetConsoleHwnd());
+    }
+    else
+    {
+        return umba::win32::clipboardTextSet(text, umba::win32::clipboardGetConsoleHwnd());
+    }
+    #else
+
+    return false;
+
+    #endif
+}
+
+#endif
+
+
+
+
+inline
+bool readFileHelper(IoFileType ioFt, const std::string &fileName, std::string &data)
+{
+    if (ioFt==IoFileType::stdinFile)
+        return readStreamHelper(std::cin, data);
+
+    return readFileHelper(fileName, data);
+}
+
+inline
+bool writeFileHelper(IoFileType ioFt, const std::string &fileName, const std::string &data, bool bOverwrite)
+{
+    if (ioFt==IoFileType::stdoutFile)
+        return writeStreamHelper(std::cout, data);
+
+    return writeFileHelper(fileName, data, bOverwrite);
+}
+
+
+
+} // namespace app_utils
 
 

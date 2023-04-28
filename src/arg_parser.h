@@ -332,7 +332,7 @@ int operator()( const std::string                               &a           //!
                               << "  If output_file not taken, input file name used, or STDOUT, if input is from STDIN\n"
                               << "  Use 'STDIN' as input file name to read from STDIN\n"
                               << "  Use 'STDOUT' as output file name to write to STDOUT\n"
-                              << "  Use 'CLPB' to use clipboard as input/output file\n"
+                              << "  Use 'CLPB'/'CLIPBRD' to use clipboard as input/output file\n"
                               << "\nOptions:\n\n"
                               << helpText;
                               //<< " [OPTIONS] input_file [output_file]\n\nOptions:\n\n"<<helpText;
