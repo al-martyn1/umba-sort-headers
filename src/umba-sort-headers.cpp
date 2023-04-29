@@ -51,13 +51,13 @@ umba::StdStreamCharWriter coutWriter(std::cout);
 umba::StdStreamCharWriter cerrWriter(std::cerr);
 umba::NulCharWriter       nulWriter;
 
-umba::SimpleFormatter logMsg(&coutWriter);
-umba::SimpleFormatter logErr(&cerrWriter);
-umba::SimpleFormatter logNul(&nulWriter);
+umba::SimpleFormatter umbaLogStreamErr(&coutWriter);
+umba::SimpleFormatter umbaLogStreamMsg(&cerrWriter);
+umba::SimpleFormatter umbaLogStreamNul(&nulWriter);
 
-bool logWarnType   = true;
-bool logGccFormat  = false;
-bool logSourceInfo = false;
+bool umbaLogGccFormat   = false; // true;
+bool umbaLogSourceInfo  = false;
+
 bool bOverwrite    = false;
 
 marty_cpp::SortIncludeOptions sortIncludeOptions;
