@@ -30,7 +30,7 @@
 #include "marty_cpp/enums.h"
 #include "marty_cpp/src_normalization.h"
 
-#include "utf.h"
+#include "encoding/encoding.h"
 #include "app_utils.h"
 
 
@@ -207,7 +207,7 @@ int main(int argc, char* argv[])
 
     if (checkBom)
     {
-        bomData = app_utils::stripBom(srcData);
+        bomData = encoding::getEncodingsApi()->stripTheBom(srcData); // app_utils::stripBom(srcData);
     }
 
     if (!bomData.empty() && bomData.size()!=3)
@@ -249,9 +249,10 @@ int main(int argc, char* argv[])
     {
         if (fromFile)
         {
-            // Прочитали из файла, хз какая кодировка
-            // Детектим кодировку и конвертим в UTF-8
-            resultText = autoToUtf8(bomData+resultText);
+            // Вход был прочитан из файла, хз какая кодировка
+            // Но кодировка не поменялась в процессе сортировки, просто строки местами поменялись
+            // Детектим кодировку и конвертим в UTF-8, присунув исходный BOM, если был
+            resultText = encoding::toUtf8(bomData+resultText);
             utfSource  = true;
         }
 
