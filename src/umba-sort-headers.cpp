@@ -229,7 +229,7 @@ int main(int argc, char* argv[])
         auto endTick = umba::time_service::getCurTimeMs();
         if (!argsParser.quet)
         {
-            LOG_MSG_OPT << "    time: " << (endTick-startTick) << "ms\n";
+            // LOG_MSG_OPT << "    time: " << (endTick-startTick) << "ms\n";
         }
 
 
