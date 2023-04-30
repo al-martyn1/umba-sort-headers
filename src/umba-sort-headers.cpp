@@ -32,6 +32,7 @@
 
 #include "encoding/encoding.h"
 #include "umba/cli_tool_helpers.h"
+#include "umba/time_service.h"
 
 
 #if defined(WIN32) || defined(_WIN32)
@@ -156,6 +157,20 @@ int main(int argc, char* argv[])
         umba::cli_tool_helpers::IoFileType outputFileType = umba::cli_tool_helpers::IoFileType::nameEmpty;
         adjustInputOutputFilenames(inputFilename, inputFileType, outputFilename, outputFileType);
 
+        if (outputFileType==umba::cli_tool_helpers::IoFileType::stdoutFile)
+        {
+            argsParser.quet = true;
+        }
+
+        if (!argsParser.quet)
+        {
+            std::string strEmpty;
+            LOG_MSG_OPT << "Processing '" << inputFilename << "'"
+                << ((inputFilename!=outputFilename) ? " -> '" : "")
+                << ((inputFilename!=outputFilename) ? outputFilename : strEmpty)
+                << ((inputFilename!=outputFilename) ? "'" : "")
+                << "\n";
+        }
        
         bool utfSource = false;
         bool checkBom  = true;
@@ -173,6 +188,8 @@ int main(int argc, char* argv[])
         //------------------------------
        
         // Do job itself
+        auto startTick = umba::time_service::getCurTimeMs();
+
        
         ELinefeedType detectedSrcLinefeed = ELinefeedType::crlf;
        
@@ -200,6 +217,7 @@ int main(int argc, char* argv[])
        
         std::string resultText = marty_cpp::mergeLines(sortedLines, outputLinefeed, false /* addTrailingNewLine */);
        
+
         //------------------------------
 
         umba::cli_tool_helpers::writeOutput( outputFilename, outputFileType
@@ -207,6 +225,13 @@ int main(int argc, char* argv[])
                                            , resultText, bomData
                                            , fromFile, utfSource, bOverwrite
                                            );
+
+        auto endTick = umba::time_service::getCurTimeMs();
+        if (!argsParser.quet)
+        {
+            LOG_MSG_OPT << "    time: " << (endTick-startTick) << "ms\n";
+        }
+
 
     } // try
     catch(const std::runtime_error &e)
