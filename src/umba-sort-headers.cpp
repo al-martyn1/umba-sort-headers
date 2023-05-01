@@ -237,6 +237,7 @@ int main(int argc, char* argv[])
     catch(const std::runtime_error &e)
     {
         LOG_ERR_OPT << e.what() << "\n";
+        return 1;
     }
 
     return 0;
