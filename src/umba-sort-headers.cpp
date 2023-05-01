@@ -52,7 +52,7 @@ umba::StdStreamCharWriter coutWriter(std::cout);
 umba::StdStreamCharWriter cerrWriter(std::cerr);
 umba::NulCharWriter       nulWriter;
 
-umba::SimpleFormatter umbaLogStreamErr(&coutWriter);
+umba::SimpleFormatter umbaLogStreamErr(&cerrWriter);
 umba::SimpleFormatter umbaLogStreamMsg(&cerrWriter);
 umba::SimpleFormatter umbaLogStreamNul(&nulWriter);
 
