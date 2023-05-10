@@ -345,6 +345,17 @@ int operator()( const std::string                               &a           //!
             return 0;
         }
 
+        else if ( opt.isOption("gcc")
+               || opt.setDescription("GCC messages format instead of MSVC format")
+                )
+        {
+            if (argsParser.hasHelpOption) return 0;
+            
+            umbaLogGccFormat = true;
+
+            return 0;
+        }
+
         else if ( opt.isOption("autocomplete-install") 
                || opt.setDescription("Install autocompletion to bash"
                                      #if defined(WIN32) || defined(_WIN32)
