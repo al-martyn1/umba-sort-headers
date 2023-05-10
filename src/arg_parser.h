@@ -276,6 +276,64 @@ int operator()( const std::string                               &a           //!
             return 0;
         }
 
+        else if ( opt.isOption("exclude-files") || opt.isOption('X') || opt.setParam("MASK,...")
+               || opt.setDescription("Exclude files from parsing. The 'MASK' parameter is a simple file mask, where '*' "
+                                     "means any number of any chars, and '?' means exact one of any char. In addition, "
+                                     "symbol '^' in front and/or back of the mask means that the mask will be bound to beginning/ending "
+                                     "of the tested file name.\n"
+                                     "Also, regular expresion syntax allowed in form '" + 
+                                     umba::regex_helpers::getRawEcmaRegexPrefix<std::string>() + "YOURREGEX'. The regular expresions supports\n"
+                                     "See also: C++ Modified ECMA Script regular expression grammar - https://en.cppreference.com/w/cpp/regex/ecmascript"
+                                    )
+                )
+        {
+            if (argsParser.hasHelpOption) return 0;
+            
+            if (!opt.hasArg())
+            {
+                LOG_ERR_OPT<<"exclude files mask not taken (--exclude-files)\n";
+                return -1;
+            }
+
+            std::vector< std::string > lst = umba::string_plus::split(opt.optArg, ',');
+            appConfig.excludeFilesMaskList.insert(appConfig.excludeFilesMaskList.end(), lst.begin(), lst.end());
+
+            return 0;
+        }
+
+        else if ( opt.isOption("include-files") || opt.isOption('I') || opt.setParam("MASK,...")
+               || opt.setDescription("Include C/C++ names for output. Only files which file name matched any of taken masks, will be added to output.\n"
+                                     "Note: exclude masks also performed on included names\n"
+                                     "For details about 'MASK' parameter see '--exclude-files' option description."
+                                    )
+                )
+        {
+            if (argsParser.hasHelpOption) return 0;
+            
+            if (!opt.hasArg())
+            {
+                LOG_ERR_OPT<<"exclude names mask not taken (--exclude-names)\n";
+                return -1;
+            }
+
+            std::vector< std::string > lst = umba::string_plus::split(opt.optArg, ',');
+            appConfig.includeFilesMaskList.insert(appConfig.includeFilesMaskList.end(), lst.begin(), lst.end());
+
+            return 0;
+        }
+
+        else if ( opt.isOption("scan-mode") || opt.isOption("scan")
+               || opt.setDescription("Scan for multiple files. Input files are also will be output files (--overwrite=Y). In this case all input will be threated as a paths for scan")
+                )
+        {
+            if (argsParser.hasHelpOption) return 0;
+            
+            appConfig.scanMode = true;
+            bOverwrite         = true;
+
+            return 0;
+        }
+
         else if ( opt.isOption("autocomplete-install") 
                || opt.setDescription("Install autocompletion to bash"
                                      #if defined(WIN32) || defined(_WIN32)
@@ -381,10 +439,12 @@ int operator()( const std::string                               &a           //!
 
     //appConfig.outputName = makeAbsPath(a);
 
-    if (inputFilename.empty())
-        inputFilename = a;
-    else
-        outputFilename = a;
+    // if (filenamePair.inputFilename.empty())
+    //     filenamePair.inputFilename = a;
+    // else
+    //     filenamePair.outputFilename = a;
+
+    inputs.emplace_back(makeAbsPath(a));
 
     return 0;
 
