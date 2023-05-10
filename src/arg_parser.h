@@ -312,7 +312,7 @@ int operator()( const std::string                               &a           //!
             
             if (!opt.hasArg())
             {
-                LOG_ERR_OPT<<"exclude names mask not taken (--exclude-names)\n";
+                LOG_ERR_OPT<<"include names mask not taken (--include-names)\n";
                 return -1;
             }
 
