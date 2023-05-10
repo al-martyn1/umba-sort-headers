@@ -120,8 +120,9 @@ int main(int argc, char* argv[])
     // Force set CLI arguments while running under debugger
     if (umba::isDebuggerPresent())
     {
-        //argsParser.args.clear();
-        //argsParser.args.push_back("@..\\tests\\data\\test01.rsp");
+        argsParser.args.clear();
+        argsParser.args.push_back("--scan");
+        argsParser.args.push_back(".");
 
         //argsParser.args.push_back("@..\\make_sources_brief.rsp");
         // argsParser.args.push_back(umba::string_plus::make_string(""));
@@ -164,115 +165,134 @@ int main(int argc, char* argv[])
     // }
 
 
-    std::vector<FilenamePair> filenamePairs;
-
-    if (appConfig.scanMode)
+    try
     {
-        if (inputs.empty())
-            throw std::runtime_error("no input paths taken");
-        appConfig.scanPaths = inputs;
-        std::vector<std::string> foundFiles, excludedFiles;
-        std::set<std::string>    foundExtentions;
-        umba::scanners::scanFolders( /* argsParser.quet ? umbaLogStreamNul : umbaLogStreamMsg,  */ appConfig, umbaLogStreamNul, foundFiles, excludedFiles, foundExtentions);
-
-        for(const auto &fn : foundFiles)
+        std::vector<FilenamePair> filenamePairs;
+       
+        if (appConfig.scanMode)
         {
-            filenamePairs.emplace_back(FilenamePair{fn, fn});
+            if (inputs.empty())
+                throw std::runtime_error("no input paths taken");
+       
+            if (appConfig.includeFilesMaskList.empty() && appConfig.excludeFilesMaskList.empty())
+            {
+                if (!appConfig.allFiles)
+                {
+                    throw std::runtime_error("no --exclude-files nor --include-files mask are taken, requires --all to confirm processing all files");
+                }
+            }
+            
+            appConfig.scanPaths = inputs;
+            std::vector<std::string> foundFiles, excludedFiles;
+            std::set<std::string>    foundExtentions;
+            umba::scanners::scanFolders( /* argsParser.quet ? umbaLogStreamNul : umbaLogStreamMsg,  */ appConfig, umbaLogStreamNul, foundFiles, excludedFiles, foundExtentions);
+       
+            for(const auto &fn : foundFiles)
+            {
+                filenamePairs.emplace_back(FilenamePair{fn, fn});
+            }
+       
+            // if (inputs.empty())
+            //     throw std::runtime_error("no files found");
+        
+        }
+        else
+        {
+            FilenamePair fp;
+            if (inputs.size()>0)
+                fp.inputFilename  = inputs[0];
+            if (inputs.size()>1)
+                fp.outputFilename = inputs[1];
+       
+            filenamePairs.emplace_back(fp);
+        }
+       
+        for(auto &filenamePair : filenamePairs)
+        {
+            try
+            {
+                umba::cli_tool_helpers::IoFileType inputFileType  = umba::cli_tool_helpers::IoFileType::nameEmpty;
+                umba::cli_tool_helpers::IoFileType outputFileType = umba::cli_tool_helpers::IoFileType::nameEmpty;
+                adjustInputOutputFilenames(filenamePair.inputFilename, inputFileType, filenamePair.outputFilename, outputFileType);
+           
+                if (outputFileType==umba::cli_tool_helpers::IoFileType::stdoutFile)
+                {
+                    argsParser.quet = true;
+                }
+           
+                if (!argsParser.quet)
+                {
+                    std::string strEmpty;
+                    LOG_MSG_OPT << "Processing '" << filenamePair.inputFilename << "'"
+                        << ((filenamePair.inputFilename!=filenamePair.outputFilename) ? " -> '" : "")
+                        << ((filenamePair.inputFilename!=filenamePair.outputFilename) ? filenamePair.outputFilename : strEmpty)
+                        << ((filenamePair.inputFilename!=filenamePair.outputFilename) ? "'" : "")
+                        << "\n";
+                }
+               
+                bool utfSource = false;
+                bool checkBom  = true;
+                bool fromFile  = true;
+           
+                std::string srcData = umba::cli_tool_helpers::readInput( filenamePair.inputFilename , inputFileType
+                                    , encoding::ToUtf8(), checkBom, fromFile, utfSource //, outputLinefeed
+                                    );
+           
+                // Есть ли данные на входе, нет их - это не наша проблема - процессим пустой текст в нормальном режиме
+                std::string bomData = umba::cli_tool_helpers::stripTheBom(srcData, checkBom, encoding::BomStripper());
+               
+                //------------------------------
+               
+                ELinefeedType detectedSrcLinefeed = ELinefeedType::crlf;
+               
+                std::string lfNormalizedText = marty_cpp::normalizeCrLfToLf(srcData, &detectedSrcLinefeed);
+               
+                if (outputLinefeed==ELinefeedType::unknown || outputLinefeed==ELinefeedType::detect)
+                {
+                    outputLinefeed = detectedSrcLinefeed;
+                }
+           
+                #if defined(WIN32) || defined(_WIN32)
+                if (outputFileType==umba::cli_tool_helpers::IoFileType::clipboard)
+                {
+                    outputLinefeed = ELinefeedType::crlf;
+                }
+                #endif
+               
+                std::vector<std::string> textLines = marty_cpp::splitToLinesSimple( lfNormalizedText
+                                                                                  , true // addEmptyLineAfterLastLf
+                                                                                  , '\n' // lfChar
+                                                                                  );
+               
+                std::vector<std::string> sortedLines = marty_cpp::sortIncludes(textLines, sortIncludeOptions);
+               
+                std::string resultText = marty_cpp::mergeLines(sortedLines, outputLinefeed, false /* addTrailingNewLine */);
+               
+           
+                //------------------------------
+           
+                umba::cli_tool_helpers::writeOutput( filenamePair.outputFilename, outputFileType
+                                                   , encoding::ToUtf8(), encoding::FromUtf8()
+                                                   , resultText, bomData
+                                                   , fromFile, utfSource, bOverwrite
+                                                   );
+           
+            } // try
+            catch(const std::runtime_error &e)
+            {
+                LOG_ERR_OPT << e.what() << "\n";
+                return 1;
+            }
+       
         }
 
-        // if (inputs.empty())
-        //     throw std::runtime_error("no files found");
-    
-    }
-    else
+    } // try
+    catch(const std::runtime_error &e)
     {
-        FilenamePair fp;
-        if (inputs.size()>0)
-            fp.inputFilename  = inputs[0];
-        if (inputs.size()>1)
-            fp.outputFilename = inputs[1];
-
-        filenamePairs.emplace_back(fp);
+        LOG_ERR_OPT << e.what() << "\n";
+        return 1;
     }
 
-    for(auto &filenamePair : filenamePairs)
-    {
-        try
-        {
-            umba::cli_tool_helpers::IoFileType inputFileType  = umba::cli_tool_helpers::IoFileType::nameEmpty;
-            umba::cli_tool_helpers::IoFileType outputFileType = umba::cli_tool_helpers::IoFileType::nameEmpty;
-            adjustInputOutputFilenames(filenamePair.inputFilename, inputFileType, filenamePair.outputFilename, outputFileType);
-       
-            if (outputFileType==umba::cli_tool_helpers::IoFileType::stdoutFile)
-            {
-                argsParser.quet = true;
-            }
-       
-            if (!argsParser.quet)
-            {
-                std::string strEmpty;
-                LOG_MSG_OPT << "Processing '" << filenamePair.inputFilename << "'"
-                    << ((filenamePair.inputFilename!=filenamePair.outputFilename) ? " -> '" : "")
-                    << ((filenamePair.inputFilename!=filenamePair.outputFilename) ? filenamePair.outputFilename : strEmpty)
-                    << ((filenamePair.inputFilename!=filenamePair.outputFilename) ? "'" : "")
-                    << "\n";
-            }
-           
-            bool utfSource = false;
-            bool checkBom  = true;
-            bool fromFile  = true;
-       
-            std::string srcData = umba::cli_tool_helpers::readInput( filenamePair.inputFilename , inputFileType
-                                , encoding::ToUtf8(), checkBom, fromFile, utfSource //, outputLinefeed
-                                );
-       
-            // Есть ли данные на входе, нет их - это не наша проблема - процессим пустой текст в нормальном режиме
-            std::string bomData = umba::cli_tool_helpers::stripTheBom(srcData, checkBom, encoding::BomStripper());
-           
-            //------------------------------
-           
-            ELinefeedType detectedSrcLinefeed = ELinefeedType::crlf;
-           
-            std::string lfNormalizedText = marty_cpp::normalizeCrLfToLf(srcData, &detectedSrcLinefeed);
-           
-            if (outputLinefeed==ELinefeedType::unknown || outputLinefeed==ELinefeedType::detect)
-            {
-                outputLinefeed = detectedSrcLinefeed;
-            }
-       
-            #if defined(WIN32) || defined(_WIN32)
-            if (outputFileType==umba::cli_tool_helpers::IoFileType::clipboard)
-            {
-                outputLinefeed = ELinefeedType::crlf;
-            }
-            #endif
-           
-            std::vector<std::string> textLines = marty_cpp::splitToLinesSimple( lfNormalizedText
-                                                                              , true // addEmptyLineAfterLastLf
-                                                                              , '\n' // lfChar
-                                                                              );
-           
-            std::vector<std::string> sortedLines = marty_cpp::sortIncludes(textLines, sortIncludeOptions);
-           
-            std::string resultText = marty_cpp::mergeLines(sortedLines, outputLinefeed, false /* addTrailingNewLine */);
-           
-       
-            //------------------------------
-       
-            umba::cli_tool_helpers::writeOutput( filenamePair.outputFilename, outputFileType
-                                               , encoding::ToUtf8(), encoding::FromUtf8()
-                                               , resultText, bomData
-                                               , fromFile, utfSource, bOverwrite
-                                               );
-       
-        } // try
-        catch(const std::runtime_error &e)
-        {
-            LOG_ERR_OPT << e.what() << "\n";
-            return 1;
-        }
-
-    }
 
     return 0;
 }

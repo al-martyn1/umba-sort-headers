@@ -24,6 +24,7 @@ struct FilenamePair
 struct AppConfig
 {
 
+    bool                                     allFiles = false;
     bool                                     scanMode = false;
     std::vector<std::string>                 scanPaths;
     std::vector<std::string>                 includeFilesMaskList;

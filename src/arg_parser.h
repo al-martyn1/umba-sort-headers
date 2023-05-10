@@ -334,6 +334,17 @@ int operator()( const std::string                               &a           //!
             return 0;
         }
 
+        else if ( opt.isOption("all")
+               || opt.setDescription("In scan mode, if no --exclude-files nor --include-files mask are taken, --all option required to confirm processing all files")
+                )
+        {
+            if (argsParser.hasHelpOption) return 0;
+            
+            appConfig.allFiles = true;
+
+            return 0;
+        }
+
         else if ( opt.isOption("autocomplete-install") 
                || opt.setDescription("Install autocompletion to bash"
                                      #if defined(WIN32) || defined(_WIN32)
