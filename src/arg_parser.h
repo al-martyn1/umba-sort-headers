@@ -304,7 +304,11 @@ int operator()( const std::string                               &a           //!
         else if ( opt.isOption("include-files") || opt.isOption('I') || opt.setParam("MASK,...")
                || opt.setDescription("Include C/C++ names for output. Only files which file name matched any of taken masks, will be added to output.\n"
                                      "Note: exclude masks also performed on included names\n"
-                                     "For details about 'MASK' parameter see '--exclude-files' option description."
+                                     "For details about 'MASK' parameter see '--exclude-files' option description.\n"
+                                     "Use\n"
+                                     "'--include-files=*.cpp^,*.c^,*.cc^,*.cxx^,*.c++^,*.hpp^,*.h^,*.hxx^,*.h++^' to process C/C++ sources and headers\n"
+                                     "'--include-files=*.cpp^,*.c^,*.cc^,*.cxx^,*.c++^' to process C/C++ sources\n"
+                                     "'--include-files=*.hpp^,*.h^,*.hxx^,*.h++^' to process C/C++ headers\n"
                                     )
                 )
         {
